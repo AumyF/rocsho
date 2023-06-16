@@ -6,7 +6,11 @@
 %%
 
 Rocsho
-    : Expr
+    : Script
+    ;
+
+Script
+    : { Expr }
     ;
 
 DecimalIntLiteral
@@ -24,7 +28,7 @@ AddSubExpr
     ;
 
 AddSubOperand
-    : MulDivExpr 
+    : MulDivExpr
     ;
 
 ParenExpr
