@@ -10,7 +10,7 @@ Rocsho
     ;
 
 DecimalIntLiteral
-    : /[1-9][0-9]*/
+    : /0|[1-9][0-9]*/
     ;
 
 Expr
@@ -31,9 +31,8 @@ ParenExpr
     : '('^ Expr ')'^
     ;
 
-MulDivExpr // U+002f - slash (/)
-// FIXME: after upgrading regex-syntax to 0.7, replace \x2f with \/ 
-    : MulDivOperand { /\*|\x2f/ MulDivOperand }
+MulDivExpr
+    : MulDivOperand { "\*|/" MulDivOperand }
     ;
 
 MulDivOperand
