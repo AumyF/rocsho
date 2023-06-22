@@ -10,6 +10,10 @@ Rocsho
     ;
 
 Script
+    : Sequence
+    ;
+
+Sequence
     : { Expr }
     ;
 
@@ -36,7 +40,7 @@ ParenExpr
     ;
 
 MulDivExpr
-    : MulDivOperand { "\*|/" MulDivOperand }
+    : MulDivOperand { ('*' | '/') MulDivOperand }
     ;
 
 MulDivOperand

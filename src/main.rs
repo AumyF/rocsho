@@ -5,6 +5,8 @@ mod rocsho_grammar;
 mod rocsho_grammar_trait;
 mod rocsho_parser;
 
+mod interpreter;
+
 use crate::rocsho_grammar::RocshoGrammar;
 use crate::rocsho_parser::parse;
 use anyhow::{anyhow, Context, Result};
@@ -36,6 +38,12 @@ fn main() -> Result<()> {
                     Ok(())
                 } else {
                     println!("Success!\n{}", rocsho_grammar);
+                    let mut i = interpreter::Interpreter::new();
+
+                    println!(
+                        "Evaluated: {:?}",
+                        i.interpret(rocsho_grammar.rocsho.unwrap())
+                    );
                     Ok(())
                 }
             }
