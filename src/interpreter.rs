@@ -63,14 +63,17 @@ impl Interpreter {
     }
 
     pub fn interpret(&mut self, source: rocsho_grammar_trait::Rocsho) -> Value {
-        self.interpret_sequence(&source.script.sequence)
+        self.interpret_sequence(*source.script.sequence)
     }
 
-    fn interpret_sequence(&mut self, source: &Sequence) -> Value {
-        let expressions = &source.sequence_list;
-        expressions
-            .iter()
-            .fold(Value::Unit, |_, e| self.interpret_expr(&e.expr))
+    fn interpret_sequence(&mut self, source: Sequence) -> Value {
+        source.sequence_opt.map(|s| {
+            s.sequence_opt_list
+                .iter()
+                .fold(self.interpret_expr(&s.expr), |_, e| {
+                    self.interpret_expr(&e.expr)
+                })
+        }).unwrap()
     }
 
     fn interpret_expr(&mut self, expr: &rocsho_grammar_trait::Expr) -> Value {

@@ -14,7 +14,7 @@ Script
     ;
 
 Sequence
-    : { Expr }
+    : [ Expr { ';' Expr } ]
     ;
 
 DecimalIntLiteral
