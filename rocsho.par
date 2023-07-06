@@ -10,11 +10,28 @@ Rocsho
     ;
 
 Script
-    : Sequence
+    : BlockInner
     ;
 
-Sequence
-    : [ Expr { ';' Expr } ]
+Block
+    : '('^ [ BlockInner ] ')'^
+    ;
+
+BlockElement
+    : Expr 
+    | VariableDeclaration
+    ;
+
+BlockInner
+    : BlockElement { ';'^ BlockElement }
+    ;
+
+Pattern
+    : Identifier
+    ;
+
+VariableDeclaration
+    : 'let'^ Pattern '='^ Expr
     ;
 
 DecimalIntLiteral
@@ -35,16 +52,20 @@ AddSubOperand
     : MulDivExpr
     ;
 
-ParenExpr
-    : '('^ Expr ')'^
-    ;
-
 MulDivExpr
-    : MulDivOperand { ('*' | '/') MulDivOperand }
+    : MulDivOperand { ( '*' 
+    | '/')
+ MulDivOperand }
     ;
 
 MulDivOperand
     : DecimalIntLiteral 
-    | ParenExpr
+    | Block
+    | Identifier
     ;
+
+Identifier
+    : /\p{XID_Start}\p{XID_Continue}*/
+    ;
+
 

@@ -9,6 +9,7 @@ mod interpreter;
 
 use crate::rocsho_grammar::RocshoGrammar;
 use crate::rocsho_parser::parse;
+use crate::interpreter::interpret;
 use anyhow::{anyhow, Context, Result};
 use parol_runtime::{log::debug, Report};
 use std::{env, fs, time::Instant};
@@ -38,11 +39,10 @@ fn main() -> Result<()> {
                     Ok(())
                 } else {
                     println!("Success!\n{}", rocsho_grammar);
-                    let mut i = interpreter::Interpreter::new();
 
                     println!(
                         "Evaluated: {:?}",
-                        i.interpret(rocsho_grammar.rocsho.unwrap())
+                        interpret(rocsho_grammar.rocsho.unwrap(), &interpreter::Environment::new())
                     );
                     Ok(())
                 }
