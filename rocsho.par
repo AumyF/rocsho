@@ -1,93 +1,50 @@
 %start Rocsho
 %title "Rocsho grammar"
 %comment "Grammar for RocSho programming language"
-%line_comment "//"
-
+%line_comment "//" 
 %%
 
 Rocsho
-    : Script
-    ;
-
+    : Script;
 Script
-    : [ Module /---/^ ] BlockInner
-    ;
-
+    : [ Module /---/^ ] BlockInner;
 Module
-    : { ModuleItem }
-    ;
-
+    : { ModuleItem };
 ModuleItem
-    : FunctionDeclaration
-    ;
-
+    : FunctionDeclaration;
 FunctionDeclaration
-    : 'def'^ Identifier '('^ ParameterList ')'^ '='^ Expr ';'^
-    ;
-
+    : 'def'^ Identifier '('^ ParameterList ')'^ '='^ Expr ';'^;
 ParameterList
-    : Pattern { ','^ Pattern }
-    ;
-
+    : Pattern { ','^ Pattern };
 Block
-    : '('^ [ BlockInner ] ')'^
-    ;
-
+    : '('^ [ BlockInner ] ')'^;
 BlockElement
-    : Expr 
-    | VariableDeclaration
-    ;
-
+    : Expr
+    | VariableDeclaration;
 BlockInner
-    : BlockElement { ';'^ BlockElement }
-    ;
-
+    : BlockElement { ';'^ BlockElement };
 Pattern
-    : Identifier
-    ;
-
+    : Identifier;
 VariableDeclaration
-    : 'let'^ Pattern '='^ Expr
-    ;
-
+    : 'let'^ Pattern '='^ Expr;
 DecimalIntLiteral
-    : /0|[1-9][0-9]*/
-    ;
-
+    : /0|[1-9][0-9]*/;
 FunctionApplication
-    : PrimaryExpression {'('^ [Expr {','^ Expr}] ')'^};
-
-Expr
-    : AddSubExpr
-    ;
-
+    : PrimaryExpression { '('^ [ Expr { ','^ Expr } ] ')'^ };
+Expr: AddSubExpr;
 AddSubExpr
-    : AddSubOperand { ( '+' 
-    | '-')
- AddSubOperand }
-    ;
-
+    : AddSubOperand { ( '+' | '-' ) AddSubOperand };
 AddSubOperand
-    : MulDivExpr
-    ;
-
+    : MulDivExpr;
 MulDivExpr
-    : MulDivOperand { ( '*' 
-    | '/')
- MulDivOperand }
-    ;
-
+    : MulDivOperand { ( '*' | '/' ) MulDivOperand };
 MulDivOperand
     : FunctionApplication;
-
 PrimaryExpression
-    : DecimalIntLiteral 
+    : DecimalIntLiteral
     | Block
-    | Identifier
-    ;
-
+    | Identifier;
 Identifier
-    : /\p{XID_Start}\p{XID_Continue}*/
-    ;
+    : /\p{XID_Start}\p{XID_Continue}*/;
 
 
