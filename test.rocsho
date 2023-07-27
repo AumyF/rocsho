@@ -1,7 +1,17 @@
+def four_times(x) = (
+  4 * x
+);
+
+def f(x, y) = x + y;
+
+---
+
 let a = 3;
 let b = 4 * a;
 let c = (
   3 * b
 );
 a + b;
-c
+let x = 3;
+four_times(x);
+f(1, 3)

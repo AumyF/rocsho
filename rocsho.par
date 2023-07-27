@@ -10,7 +10,23 @@ Rocsho
     ;
 
 Script
-    : BlockInner
+    : [ Module /---/^ ] BlockInner
+    ;
+
+Module
+    : { ModuleItem }
+    ;
+
+ModuleItem
+    : FunctionDeclaration
+    ;
+
+FunctionDeclaration
+    : 'def'^ Identifier '('^ ParameterList ')'^ '='^ Expr ';'^
+    ;
+
+ParameterList
+    : Pattern { ','^ Pattern }
     ;
 
 Block
@@ -38,6 +54,9 @@ DecimalIntLiteral
     : /0|[1-9][0-9]*/
     ;
 
+FunctionApplication
+    : PrimaryExpression {'('^ [Expr {','^ Expr}] ')'^};
+
 Expr
     : AddSubExpr
     ;
@@ -59,6 +78,9 @@ MulDivExpr
     ;
 
 MulDivOperand
+    : FunctionApplication;
+
+PrimaryExpression
     : DecimalIntLiteral 
     | Block
     | Identifier

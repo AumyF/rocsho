@@ -1,4 +1,4 @@
-extern crate parol_runtime;
+#![warn(clippy::all, rust_2018_idioms, future_incompatible)]
 
 mod rocsho_grammar;
 // The output is version controlled
@@ -9,7 +9,6 @@ mod interpreter;
 
 use crate::rocsho_grammar::RocshoGrammar;
 use crate::rocsho_parser::parse;
-use crate::interpreter::interpret;
 use anyhow::{anyhow, Context, Result};
 use parol_runtime::{log::debug, Report};
 use std::{env, fs, time::Instant};
@@ -42,7 +41,7 @@ fn main() -> Result<()> {
 
                     println!(
                         "Evaluated: {:?}",
-                        interpret(rocsho_grammar.rocsho.unwrap(), &interpreter::Environment::new())
+                        rocsho_grammar.rocsho.unwrap().evaluate( &interpreter::Environment::new())
                     );
                     Ok(())
                 }
