@@ -1,28 +1,35 @@
 use crate::rocsho_grammar_trait;
 use rocsho_grammar_trait::*;
 use std::collections::HashMap;
-#[derive(Debug, Clone)]
 
+#[derive(Debug, Clone)]
 pub struct Fn<'a> {
     parameters: Vec<String>,
     body: Expr<'a>,
     // pattern: Expr<'a>,
     env: Environment<'a>,
+    name: String,
 }
 
 impl<'a> Fn<'a> {
     /// Evaluate `self` with its environemnt and supplied arguments
     fn evaluate_with(&self, arguments: Vec<Value<'a>>) -> EvalResult<'a> {
-        let env =
-            self.parameters
-                .iter()
-                .enumerate()
-                .fold(self.env.clone(), |env, (index, name)| {
-                    env.set(
-                        name,
-                        arguments.get(index).expect("Not enough arguments").clone(),
+        let env = self.parameters.iter().enumerate().try_fold(
+            self.env.set(&self.name, Value::Fn(self.clone())),
+            |env, (index, name)| {
+                let argument = arguments.get(index).ok_or_else(|| {
+                    format!(
+                        "Expected {} arguments but got {}",
+                        self.parameters.len(),
+                        arguments.len()
                     )
-                });
+                })?;
+
+                let env = env.set(name, argument.clone());
+                // TODO investigate this
+                Ok::<_, String>(env)
+            },
+        )?;
         self.body.evaluate(&env)
     }
 }
@@ -190,6 +197,7 @@ impl<'a> FunctionDeclaration<'a> {
             parameters,
             body: *self.expr.clone(),
             env: env.clone(),
+            name: name.to_string(),
         });
         env.set(name, fnc)
     }
@@ -206,8 +214,7 @@ impl<'a> AddSubExpr<'a> {
         self.add_sub_expr_list.iter().fold(
             self.add_sub_operand.mul_div_expr.evaluate(env),
             |acc, a| {
-                let operands =
-                    acc.bind_tuple(|| a.add_sub_operand.mul_div_expr.evaluate(env));
+                let operands = acc.bind_tuple(|| a.add_sub_operand.mul_div_expr.evaluate(env));
                 match *a.add_sub_expr_list_group {
                     AddSubExprListGroup::Plus(_) => operands.and_then(|(l, r)| l + r),
                     AddSubExprListGroup::Minus(_) => operands.and_then(|(l, r)| l - r),
