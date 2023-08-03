@@ -48,6 +48,7 @@ impl<T, E> BindTuple<T, E> for Result<T, E> {
 pub enum Value<'a> {
     Int(i64),
     Unit,
+    Bool(bool),
     Fn(Fn<'a>),
 }
 
@@ -62,6 +63,13 @@ impl<'a> Value<'a> {
     fn try_get_fn(self) -> Result<Fn<'a>, Self> {
         match self {
             Value::Fn(f) => Ok(f),
+            _ => Err(self),
+        }
+    }
+
+    fn try_get_bool(self) -> Result<bool, Self> {
+        match self {
+            Value::Bool(b) => Ok(b),
             _ => Err(self),
         }
     }
@@ -205,7 +213,26 @@ impl<'a> FunctionDeclaration<'a> {
 
 impl<'a> Expr<'a> {
     fn evaluate(&self, env: &Environment<'a>) -> EvalResult<'a> {
-        self.add_sub_expr.evaluate(env)
+        match self {
+            Expr::If(e) => e.r#if.evaluate(env),
+            Expr::AddSubExpr(e) => e.add_sub_expr.evaluate(env),
+        }
+    }
+}
+
+impl<'a> If<'a> {
+    fn evaluate(&self, env: &Environment<'a>) -> EvalResult<'a> {
+        let If {
+            expr: cond,
+            expr0: texpr,
+            expr1: fexpr,
+        } = self;
+        let cond = cond.evaluate(env)?.try_get_bool().map_err(|e| format!("{:?}", e))?;
+        if cond {
+            texpr.evaluate(env)
+        } else {
+            fexpr.evaluate(env)
+        }
     }
 }
 
@@ -308,6 +335,16 @@ impl<'a> PrimaryExpression<'a> {
             PrimaryExpression::DecimalIntLiteral(l) => Ok(l.decimal_int_literal.evaluate()),
             PrimaryExpression::Block(b) => b.block.evaluate(env),
             PrimaryExpression::Identifier(i) => i.identifier.evaluate(env),
+            PrimaryExpression::BoolLiteral(b) => Ok(b.bool_literal.evaluate()),
+        }
+    }
+}
+
+impl <'a> BoolLiteral<'a> {
+    fn evaluate(&self) -> Value<'a> {
+        match self {
+            BoolLiteral::True(_) => Value::Bool(true),
+            BoolLiteral::False(_) => Value::Bool(false)
         }
     }
 }

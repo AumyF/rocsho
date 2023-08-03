@@ -17,4 +17,4 @@ a + b;
 let x = 3;
 four_times(x);
 f(1, 3);
-r(3)
+if false then 3 else 0

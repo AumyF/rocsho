@@ -1,7 +1,8 @@
 %start Rocsho
 %title "Rocsho grammar"
 %comment "Grammar for RocSho programming language"
-%line_comment "//" 
+%line_comment "//"
+
 %%
 
 Rocsho
@@ -31,7 +32,8 @@ DecimalIntLiteral
     : /0|[1-9][0-9]*/;
 FunctionApplication
     : PrimaryExpression { '('^ [ Expr { ','^ Expr } ] ')'^ };
-Expr: AddSubExpr;
+Expr: If
+    | AddSubExpr;
 AddSubExpr
     : AddSubOperand { ( '+' | '-' ) AddSubOperand };
 AddSubOperand
@@ -40,11 +42,12 @@ MulDivExpr
     : MulDivOperand { ( '*' | '/' ) MulDivOperand };
 MulDivOperand
     : FunctionApplication;
+If  : 'if'^ Expr 'then'^ Expr 'else'^ Expr;
+BoolLiteral: 'true' | 'false';
 PrimaryExpression
     : DecimalIntLiteral
+    | BoolLiteral
     | Block
     | Identifier;
 Identifier
     : /\p{XID_Start}\p{XID_Continue}*/;
-
-
