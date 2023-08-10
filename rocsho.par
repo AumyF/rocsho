@@ -43,7 +43,9 @@ MulDivExpr
 MulDivOperand
     : FunctionApplication;
 If  : 'if'^ Expr 'then'^ Expr 'else'^ Expr;
-BoolLiteral: 'true' | 'false';
+BoolLiteral
+    : 'true'
+    | 'false';
 PrimaryExpression
     : DecimalIntLiteral
     | BoolLiteral
