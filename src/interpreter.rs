@@ -1,38 +1,6 @@
 use crate::rocsho_grammar_trait;
 use rocsho_grammar_trait::*;
-use std::collections::HashMap;
-
-#[derive(Debug, Clone)]
-pub struct Fn<'a> {
-    parameters: Vec<String>,
-    body: Expr<'a>,
-    // pattern: Expr<'a>,
-    env: Environment<'a>,
-    name: String,
-}
-
-impl<'a> Fn<'a> {
-    /// Evaluate `self` with its environemnt and supplied arguments
-    fn evaluate_with(&self, arguments: Vec<Value<'a>>) -> EvalResult<'a> {
-        let env = self.parameters.iter().enumerate().try_fold(
-            self.env.set(&self.name, Value::Fn(self.clone())),
-            |env, (index, name)| {
-                let argument = arguments.get(index).ok_or_else(|| {
-                    format!(
-                        "Expected {} arguments but got {}",
-                        self.parameters.len(),
-                        arguments.len()
-                    )
-                })?;
-
-                let env = env.set(name, argument.clone());
-                // TODO investigate this
-                Ok::<_, String>(env)
-            },
-        )?;
-        self.body.evaluate(&env)
-    }
-}
+use std::collections::BTreeMap;
 
 trait BindTuple<T, E> {
     fn bind_tuple<U>(self, other: impl FnOnce() -> Result<U, E>) -> Result<(T, U), E>;
@@ -45,105 +13,249 @@ impl<T, E> BindTuple<T, E> for Result<T, E> {
 }
 
 #[derive(Debug, Clone)]
-pub enum Value<'a> {
-    Int(i64),
-    Unit,
-    Bool(bool),
-    Fn(Fn<'a>),
-}
+pub struct Properties<'a>(BTreeMap<String, Value<'a>>);
 
-impl<'a> Value<'a> {
-    fn try_get_int(self) -> Result<i64, Self> {
-        match self {
-            Value::Int(i) => Ok(i),
-            _ => Err(self),
-        }
+impl<'a> Properties<'a> {
+    pub fn new() -> Properties<'a> {
+        Properties(BTreeMap::new())
     }
-
-    fn try_get_fn(self) -> Result<Fn<'a>, Self> {
-        match self {
-            Value::Fn(f) => Ok(f),
-            _ => Err(self),
-        }
-    }
-
-    fn try_get_bool(self) -> Result<bool, Self> {
-        match self {
-            Value::Bool(b) => Ok(b),
-            _ => Err(self),
-        }
-    }
-}
-
-impl<'a> std::ops::Add for Value<'a> {
-    type Output = EvalResult<'a>;
-    fn add(self, rhs: Self) -> Self::Output {
-        let lhs = self
-            .try_get_int()
-            .map_err(|e| format!("expected lhs to be int but got {:?}", e));
-        let rhs = rhs
-            .try_get_int()
-            .map_err(|e| format!("expected rhs to be int but got {:?}", e));
-        lhs.and_then(|lhs| rhs.map(|rhs| Value::Int(lhs + rhs)))
-    }
-}
-impl<'a> std::ops::Sub for Value<'a> {
-    type Output = EvalResult<'a>;
-    fn sub(self, rhs: Self) -> Self::Output {
-        let lhs = self
-            .try_get_int()
-            .map_err(|e| format!("expected lhs to be int but got {:?}", e));
-        let rhs = rhs
-            .try_get_int()
-            .map_err(|e| format!("expected rhs to be int but got {:?}", e));
-        lhs.and_then(|lhs| rhs.map(|rhs| Value::Int(lhs - rhs)))
-    }
-}
-impl<'a> std::ops::Mul for Value<'a> {
-    type Output = EvalResult<'a>;
-    fn mul(self, rhs: Self) -> Self::Output {
-        let lhs = self
-            .try_get_int()
-            .map_err(|e| format!("expected lhs to be int but got {:?}", e));
-        let rhs = rhs
-            .try_get_int()
-            .map_err(|e| format!("expected rhs to be int but got {:?}", e));
-        lhs.and_then(|lhs| rhs.map(|rhs| Value::Int(lhs * rhs)))
-    }
-}
-impl<'a> std::ops::Div for Value<'a> {
-    type Output = EvalResult<'a>;
-    fn div(self, rhs: Self) -> Self::Output {
-        let lhs = self
-            .try_get_int()
-            .map_err(|e| format!("expected lhs to be int but got {:?}", e));
-        let rhs = rhs
-            .try_get_int()
-            .map_err(|e| format!("expected rhs to be int but got {:?}", e));
-        lhs.and_then(|lhs| rhs.map(|rhs| Value::Int(lhs / rhs)))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Environment<'a>(HashMap<String, Value<'a>>);
-
-impl<'a> Environment<'a> {
-    pub fn new() -> Environment<'a> {
-        Environment(HashMap::new())
-    }
-    fn get(&self, name: &str) -> Option<&Value<'a>> {
+    pub fn get(&self, name: &str) -> Option<&Value<'a>> {
         self.0.get(name)
     }
-    fn set(&self, name: &str, value: Value<'a>) -> Environment<'a> {
+    pub fn set(&self, name: &str, value: Value<'a>) -> Properties<'a> {
         let mut new = self.clone();
         new.0.insert(name.to_string(), value);
         new
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Func<'a> {
+    parameters: Vec<String>,
+    body: Expr<'a>,
+    // pattern: Expr<'a>,
+    env: Properties<'a>,
+    name: String,
+}
+
+impl<'a> Func<'a> {
+    /// Evaluate `self` with its environemnt and supplied arguments
+    fn evaluate_with(&self, receiver: Value<'a>, arguments: Vec<Value<'a>>) -> EvalResult<'a> {
+        let env = self.env.set("self", receiver);
+        let env = self
+            .parameters
+            .iter()
+            .enumerate()
+            .try_fold(env, |env, (index, name)| {
+                let argument = arguments.get(index).ok_or_else(|| {
+                    format!(
+                        "Expected {} arguments but got {}",
+                        self.parameters.len(),
+                        arguments.len()
+                    )
+                })?;
+
+                let env = env.set(name, argument.clone());
+                // TODO investigate this
+                Ok::<_, String>(env)
+            })?;
+        self.body.evaluate(&env)
+    }
+}
+
+type Args<'a> = Vec<Value<'a>>;
+
+#[derive(Debug, Clone)]
+pub enum Method<'a> {
+    UserDefined(Func<'a>),
+    Builtin {
+        f: fn(Value<'a>, Args<'a>) -> Result<Value<'a>, String>,
+    },
+}
+
+impl<'a> Method<'a> {
+    fn evaluate_with(&self, self_value: Value<'a>, args: Vec<Value<'a>>) -> EvalResult<'a> {
+        match self {
+            Method::Builtin { f } => f(self_value, args),
+            Method::UserDefined(f) => f.evaluate_with(self_value, args),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Methods<'a>(BTreeMap<String, Method<'a>>);
+
+impl<'a> Methods<'a> {
+    pub fn new() -> Methods<'a> {
+        Methods(BTreeMap::new())
+    }
+    pub fn get(&self, name: &str) -> Option<&Method<'a>> {
+        self.0.get(name)
+    }
+    pub fn set(&self, name: &str, value: Method<'a>) -> Methods<'a> {
+        let mut new = self.clone();
+        new.0.insert(name.to_string(), value);
+        new
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum WrappedValue {
+    Int(i64),
+    Bool(bool),
+    Unit,
+}
+
+#[derive(Debug, Clone)]
+pub struct Value<'a> {
+    properties: Properties<'a>,
+    methods: Methods<'a>,
+    wrappd_value: Option<WrappedValue>,
+}
+
+impl<'a> Value<'a> {
+    fn empty() -> Self {
+        Value {
+            properties: Properties::new(),
+            methods: Methods::new(),
+            wrappd_value: None,
+        }
+    }
+
+    // TODO Identify unit values
+    fn unit() -> Value<'a> {
+        Value {
+            properties: Properties::new(),
+            methods: Methods::new(),
+            wrappd_value: Some(WrappedValue::Unit),
+        }
+    }
+
+    fn try_get_int(&self) -> Option<i64> {
+        match self.wrappd_value? {
+            WrappedValue::Int(i) => Some(i),
+            _ => None,
+        }
+    }
+
+    fn try_get_bool(&self) -> Result<bool, Option<Value<'a>>> {
+        match self.wrappd_value.ok_or(None)? {
+            WrappedValue::Bool(b) => Ok(b),
+            _ => Err(Some(self.clone())),
+        }
+    }
+
+    fn try_call(&self, self_value: Value<'a>, arguments: Vec<Value<'a>>) -> EvalResult<'a> {
+        let f = self
+            .methods
+            .get("call")
+            .ok_or("Cannot call an objec which doesn't have 'call' method".to_string())?;
+        f.evaluate_with(self_value, arguments)
+    }
+
+    fn bool(b: bool) -> Value<'a> {
+        let v = Value {
+            properties: Properties::new(),
+            methods: Methods::new(),
+            wrappd_value: Some(WrappedValue::Bool(b)),
+        };
+        v
+    }
+
+    fn func(f: Func<'a>) -> Value<'a> {
+        let methods = Methods::new().set("call", Method::UserDefined(f));
+        Value {
+            properties: Properties::new(),
+            methods,
+            wrappd_value: None,
+        }
+    }
+
+    fn int(i: i64) -> Value<'a> {
+        let properties = Properties::new();
+        let methods = Methods::new();
+        methods.set(
+            "eq",
+            Method::Builtin {
+                f: |it, args| {
+                    let other = args.get(0).ok_or("Not enough arguments")?;
+                    let (it, other) = it
+                        .try_get_int()
+                        .ok_or(format!("Expected self to be an int"))
+                        .bind_tuple(|| {
+                            other
+                                .try_get_int()
+                                .ok_or("Expected arg to be an int".to_string())
+                        })?;
+
+                    let result = it == other;
+                    Ok(Value::bool(result))
+                },
+            },
+        );
+        Value {
+            properties,
+            methods,
+            wrappd_value: Some(WrappedValue::Int(i)),
+        }
+    }
+}
+
+impl<'source> std::ops::Add for Value<'source> {
+    type Output = EvalResult<'source>;
+    fn add(self, rhs: Self) -> Self::Output {
+        let lhs = self
+            .try_get_int()
+            .ok_or_else(|| format!("Expected int but got {:?}", self))?;
+        let rhs = rhs
+            .try_get_int()
+            .ok_or_else(|| format!("Expected int but got {:?}", self))?;
+        Ok(Value::int(lhs + rhs))
+    }
+}
+
+impl<'source> std::ops::Sub for Value<'source> {
+    type Output = EvalResult<'source>;
+    fn sub(self, rhs: Self) -> Self::Output {
+        let lhs = self
+            .try_get_int()
+            .ok_or_else(|| format!("Expected int but got {:?}", self))?;
+        let rhs = rhs
+            .try_get_int()
+            .ok_or_else(|| format!("Expected int but got {:?}", self))?;
+        Ok(Value::int(lhs - rhs))
+    }
+}
+
+impl<'source> std::ops::Mul for Value<'source> {
+    type Output = EvalResult<'source>;
+    fn mul(self, rhs: Self) -> Self::Output {
+        let lhs = self
+            .try_get_int()
+            .ok_or_else(|| format!("Expected int but got {:?}", self))?;
+        let rhs = rhs
+            .try_get_int()
+            .ok_or_else(|| format!("Expected int but got {:?}", self))?;
+        Ok(Value::int(lhs * rhs))
+    }
+}
+
+impl<'source> std::ops::Div for Value<'source> {
+    type Output = EvalResult<'source>;
+    fn div(self, rhs: Self) -> Self::Output {
+        let lhs = self
+            .try_get_int()
+            .ok_or_else(|| format!("Expected int but got {:?}", self))?;
+        let rhs = rhs
+            .try_get_int()
+            .ok_or_else(|| format!("Expected int but got {:?}", self))?;
+        Ok(Value::int(lhs / rhs))
+    }
+}
+
 impl<'a> DecimalIntLiteral<'a> {
     fn evaluate(&self) -> Value<'a> {
-        Value::Int(
+        Value::int(
             self.decimal_int_literal
                 .text()
                 .parse()
@@ -153,7 +265,7 @@ impl<'a> DecimalIntLiteral<'a> {
 }
 
 impl<'a> Rocsho<'a> {
-    pub fn evaluate(&self, env: &Environment<'a>) -> EvalResult<'a> {
+    pub fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         let module = self.script.script_opt.clone();
         let env = module.map_or(env.clone(), |module| {
             module
@@ -172,7 +284,7 @@ impl<'a> Rocsho<'a> {
 type EvalResult<'a> = Result<Value<'a>, String>;
 
 impl<'a> Identifier<'a> {
-    fn evaluate(&self, env: &Environment<'a>) -> EvalResult<'a> {
+    fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         let name = self.identifier.text();
         env.get(name)
             .cloned()
@@ -181,7 +293,7 @@ impl<'a> Identifier<'a> {
 }
 
 impl<'a> FunctionDeclaration<'a> {
-    fn evaluate(&self, env: &Environment<'a>) -> Environment<'a> {
+    fn evaluate(&self, env: &Properties<'a>) -> Properties<'a> {
         let env = env.clone();
         let name = self.identifier.identifier.text();
 
@@ -201,7 +313,7 @@ impl<'a> FunctionDeclaration<'a> {
         );
         let parameters = parameters.collect();
 
-        let fnc = Value::Fn(Fn {
+        let fnc = Value::func(Func {
             parameters,
             body: *self.expr.clone(),
             env: env.clone(),
@@ -212,7 +324,7 @@ impl<'a> FunctionDeclaration<'a> {
 }
 
 impl<'a> Expr<'a> {
-    fn evaluate(&self, env: &Environment<'a>) -> EvalResult<'a> {
+    fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         match self {
             Expr::If(e) => e.r#if.evaluate(env),
             Expr::AddSubExpr(e) => e.add_sub_expr.evaluate(env),
@@ -221,7 +333,7 @@ impl<'a> Expr<'a> {
 }
 
 impl<'a> If<'a> {
-    fn evaluate(&self, env: &Environment<'a>) -> EvalResult<'a> {
+    fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         let If {
             expr: cond,
             expr0: texpr,
@@ -240,7 +352,7 @@ impl<'a> If<'a> {
 }
 
 impl<'a> AddSubExpr<'a> {
-    fn evaluate(&self, env: &Environment<'a>) -> EvalResult<'a> {
+    fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         self.add_sub_expr_list.iter().fold(
             self.add_sub_operand.mul_div_expr.evaluate(env),
             |acc, a| {
@@ -255,7 +367,7 @@ impl<'a> AddSubExpr<'a> {
 }
 
 impl<'a> MulDivExpr<'a> {
-    fn evaluate(&self, env: &Environment<'a>) -> EvalResult<'a> {
+    fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         self.mul_div_expr_list.iter().fold(
             self.mul_div_operand.function_application.evaluate(env),
             |acc, l| {
@@ -271,7 +383,7 @@ impl<'a> MulDivExpr<'a> {
 }
 
 impl<'a> BlockElement<'a> {
-    fn evaluate(&self, env: &Environment<'a>) -> (EvalResult<'a>, Environment<'a>) {
+    fn evaluate(&self, env: &Properties<'a>) -> (EvalResult<'a>, Properties<'a>) {
         match self {
             BlockElement::Expr(e) => {
                 let value = e.expr.evaluate(env);
@@ -289,7 +401,7 @@ impl<'a> BlockElement<'a> {
 }
 
 impl<'a> BlockInner<'a> {
-    fn evaluate(&self, env: &Environment<'a>) -> EvalResult<'a> {
+    fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         let ve = self.block_element.evaluate(env);
         let (value, _) = self.block_inner_list.iter().fold(ve, |(_, env), e| {
             let (value, env) = e.block_element.evaluate(&env);
@@ -300,15 +412,15 @@ impl<'a> BlockInner<'a> {
 }
 
 impl<'a> Block<'a> {
-    fn evaluate(&self, env: &Environment<'a>) -> EvalResult<'a> {
+    fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         self.block_opt
             .as_ref()
-            .map_or(Ok(Value::Unit), |bi| bi.block_inner.evaluate(env))
+            .map_or(Ok(Value::unit()), |bi| bi.block_inner.evaluate(env))
     }
 }
 
 impl<'a> FunctionApplication<'a> {
-    fn evaluate(&self, env: &Environment<'a>) -> EvalResult<'a> {
+    fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         let f = self.primary_expression.evaluate(env);
         let appls = self.function_application_list.iter();
         let res = appls.fold(f, |f, args| {
@@ -324,8 +436,12 @@ impl<'a> FunctionApplication<'a> {
                     a.collect()
                 });
 
-            let f = f?.try_get_fn().map_err(|e| format!("{:?}", e))?;
-            f.evaluate_with(args?)
+            let self_value = f?;
+            let f = self_value
+                .methods
+                .get("call")
+                .ok_or("Cannot call an object which doesn't 'call' method".to_string())?;
+            f.evaluate_with(self_value.clone(), args?)
         });
 
         res
@@ -333,7 +449,7 @@ impl<'a> FunctionApplication<'a> {
 }
 
 impl<'a> PrimaryExpression<'a> {
-    fn evaluate(&self, env: &Environment<'a>) -> EvalResult<'a> {
+    fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         match self {
             PrimaryExpression::DecimalIntLiteral(l) => Ok(l.decimal_int_literal.evaluate()),
             PrimaryExpression::Block(b) => b.block.evaluate(env),
@@ -346,8 +462,8 @@ impl<'a> PrimaryExpression<'a> {
 impl<'a> BoolLiteral<'a> {
     fn evaluate(&self) -> Value<'a> {
         match self {
-            BoolLiteral::True(_) => Value::Bool(true),
-            BoolLiteral::False(_) => Value::Bool(false),
+            BoolLiteral::True(_) => Value::bool(true),
+            BoolLiteral::False(_) => Value::bool(false),
         }
     }
 }

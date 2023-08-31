@@ -41,7 +41,7 @@ fn main() -> Result<()> {
 
                     println!(
                         "Evaluated: {:?}",
-                        rocsho_grammar.rocsho.unwrap().evaluate( &interpreter::Environment::new())
+                        rocsho_grammar.rocsho.unwrap().evaluate( &interpreter::Properties::new())
                     );
                     Ok(())
                 }
