@@ -13,6 +13,8 @@ Module
     : { ModuleItem };
 ModuleItem
     : FunctionDeclaration;
+ComparationExpr
+    : ComparationOperand { ( '>' | '<' | '<=' | '>=' | '==' | '!=' ) ComparationOperand };
 FunctionDeclaration
     : 'def'^ Identifier '('^ ParameterList ')'^ '='^ Expr ';'^;
 ParameterList
@@ -33,7 +35,9 @@ DecimalIntLiteral
 FunctionApplication
     : PrimaryExpression { '('^ [ Expr { ','^ Expr } ] ')'^ };
 Expr: If
-    | AddSubExpr;
+    | ComparationExpr;
+ComparationOperand
+    : AddSubExpr;
 AddSubExpr
     : AddSubOperand { ( '+' | '-' ) AddSubOperand };
 AddSubOperand

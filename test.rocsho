@@ -8,4 +8,4 @@ def r(x) = r(x);
 
 ---
 
-four_times(3)
+3 == 3

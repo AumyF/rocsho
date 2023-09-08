@@ -253,6 +253,31 @@ impl<'source> std::ops::Div for Value<'source> {
     }
 }
 
+impl<'source> Value<'source> {
+    fn eq(&self, other: &Self) -> EvalResult<'source> {
+        let eq = self
+            .methods
+            .get("eq")
+            .ok_or_else(|| "Cannot compare an object which doesn't have 'eq' method")?;
+        let r = eq.evaluate_with(self.clone(), vec![other.clone()])?;
+        let r = r
+            .try_get_bool()
+            .map_err(|_| format!("'eq' must return a boolean"))?;
+        Ok(Value::bool(r))
+    }
+    fn ne(&self, other: &Self) -> EvalResult<'source> {
+        let eq = self
+            .methods
+            .get("eq")
+            .ok_or_else(|| "Cannot compare an object which doesn't have 'eq' method")?;
+        let r = eq.evaluate_with(self.clone(), vec![other.clone()])?;
+        let r = r
+            .try_get_bool()
+            .map_err(|_| format!("'eq' must return a boolean"))?;
+        Ok(Value::bool(!r))
+    }
+}
+
 impl<'a> DecimalIntLiteral<'a> {
     fn evaluate(&self) -> Value<'a> {
         Value::int(
@@ -327,8 +352,31 @@ impl<'a> Expr<'a> {
     fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         match self {
             Expr::If(e) => e.r#if.evaluate(env),
-            Expr::AddSubExpr(e) => e.add_sub_expr.evaluate(env),
+            Expr::ComparationExpr(e) => e.comparation_expr.evaluate(env),
         }
+    }
+}
+
+impl<'source> ComparationExpr<'source> {
+    fn evaluate(&self, env: &Properties<'source>) -> EvalResult<'source> {
+        self.comparation_expr_list.iter().fold(
+            self.comparation_operand.add_sub_expr.evaluate(env),
+            |acc, a| {
+                let operands = acc.bind_tuple(|| a.comparation_operand.add_sub_expr.evaluate(env));
+                match *a.comparation_expr_list_group {
+                    ComparationExprListGroup::GT(_) => operands.and_then(|(l, r)| unimplemented!()),
+                    ComparationExprListGroup::GTEqu(_) => {
+                        operands.and_then(|(l, r)| unimplemented!())
+                    }
+                    ComparationExprListGroup::LT(_) => operands.and_then(|(l, r)| unimplemented!()),
+                    ComparationExprListGroup::LTEqu(_) => {
+                        operands.and_then(|(l, r)| unimplemented!())
+                    }
+                    ComparationExprListGroup::EquEqu(_) => operands.and_then(|(l, r)| l.eq(&r)),
+                    ComparationExprListGroup::BangEqu(_) => operands.and_then(|(l, r)| l.ne(&r)),
+                }
+            },
+        )
     }
 }
 
