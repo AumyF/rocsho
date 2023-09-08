@@ -174,7 +174,7 @@ impl<'a> Value<'a> {
     fn int(i: i64) -> Value<'a> {
         let properties = Properties::new();
         let methods = Methods::new();
-        methods.set(
+       let methods =  methods.set(
             "eq",
             Method::Builtin {
                 f: |it, args| {
