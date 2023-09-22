@@ -153,10 +153,39 @@ impl<'a> Value<'a> {
         f.evaluate_with(self_value, arguments)
     }
 
+    fn try_call_method(
+        &self,
+        self_value: Value<'a>,
+        method_name: &str,
+        arguments: Vec<Value<'a>>,
+    ) -> EvalResult<'a> {
+        let f = self
+            .methods
+            .get(method_name)
+            .ok_or(format!("This object has no '{method_name}' method"))?;
+        f.evaluate_with(self_value, arguments)
+    }
+
     fn bool(b: bool) -> Value<'a> {
         let v = Value {
             properties: Properties::new(),
-            methods: Methods::new(),
+            methods: Methods::new().set(
+                "eq",
+                Method::Builtin {
+                    f: |it, args| {
+                        let other = args.get(0).ok_or("Not enough arguments")?;
+                        let (it, other) = it
+                            .try_get_bool()
+                            .map_err(|_| format!("Expected self to be a boolean"))
+                            .bind_tuple(|| {
+                                other
+                                    .try_get_bool()
+                                    .map_err(|_| format!("Expected the argument to be a boolean"))
+                            })?;
+                        Ok(Value::bool(it == other))
+                    },
+                },
+            ),
             wrappd_value: Some(WrappedValue::Bool(b)),
         };
         v
@@ -174,25 +203,45 @@ impl<'a> Value<'a> {
     fn int(i: i64) -> Value<'a> {
         let properties = Properties::new();
         let methods = Methods::new();
-       let methods =  methods.set(
-            "eq",
-            Method::Builtin {
-                f: |it, args| {
-                    let other = args.get(0).ok_or("Not enough arguments")?;
-                    let (it, other) = it
-                        .try_get_int()
-                        .ok_or(format!("Expected self to be an int"))
-                        .bind_tuple(|| {
-                            other
-                                .try_get_int()
-                                .ok_or("Expected arg to be an int".to_string())
-                        })?;
+        let methods = methods
+            .set(
+                "eq",
+                Method::Builtin {
+                    f: |it, args| {
+                        let other = args.get(0).ok_or("Not enough arguments")?;
+                        let (it, other) = it
+                            .try_get_int()
+                            .ok_or(format!("Expected self to be an int"))
+                            .bind_tuple(|| {
+                                other
+                                    .try_get_int()
+                                    .ok_or("Expected arg to be an int".to_string())
+                            })?;
 
-                    let result = it == other;
-                    Ok(Value::bool(result))
+                        let result = it == other;
+                        Ok(Value::bool(result))
+                    },
                 },
-            },
-        );
+            )
+            .set(
+                "cmp",
+                Method::Builtin {
+                    f: |it, args| {
+                        let other = args.get(0).ok_or("Not enough arguments")?;
+                        let (it, other) = it
+                            .try_get_int()
+                            .ok_or(format!("Expected self to be an int"))
+                            .bind_tuple(|| {
+                                other
+                                    .try_get_int()
+                                    .ok_or("Expected arg to be an int".to_string())
+                            })?;
+
+                        let result = it.cmp(&other) as i64;
+                        Ok(Value::int(result))
+                    },
+                },
+            );
         Value {
             properties,
             methods,
@@ -359,18 +408,30 @@ impl<'a> Expr<'a> {
 
 impl<'source> ComparationExpr<'source> {
     fn evaluate(&self, env: &Properties<'source>) -> EvalResult<'source> {
+        fn cmp<'source>(l: &Value<'source>, r: &Value<'source>) -> EvalResult<'source> {
+            l.try_call_method(l.clone(), "cmp", vec![r.clone()])
+        }
+        fn lt<'source>(l: &Value<'source>, r: &Value<'source>) -> EvalResult<'source> {
+            cmp(l, r)?.eq(&Value::int(-1))
+        }
+        fn gt<'source>(l: &Value<'source>, r: &Value<'source>) -> EvalResult<'source> {
+            cmp(l, r)?.eq(&Value::int(1))
+        }
+        fn not<'source>(b: &Value<'source>) -> EvalResult<'source> {
+            b.eq(&Value::bool(false))
+        }
         self.comparation_expr_list.iter().fold(
             self.comparation_operand.add_sub_expr.evaluate(env),
             |acc, a| {
                 let operands = acc.bind_tuple(|| a.comparation_operand.add_sub_expr.evaluate(env));
                 match *a.comparation_expr_list_group {
-                    ComparationExprListGroup::GT(_) => operands.and_then(|(l, r)| unimplemented!()),
+                    ComparationExprListGroup::GT(_) => operands.and_then(|(l, r)| gt(&l, &r)),
                     ComparationExprListGroup::GTEqu(_) => {
-                        operands.and_then(|(l, r)| unimplemented!())
+                        operands.and_then(|(l, r)| not(&lt(&l, &r)?))
                     }
-                    ComparationExprListGroup::LT(_) => operands.and_then(|(l, r)| unimplemented!()),
+                    ComparationExprListGroup::LT(_) => operands.and_then(|(l, r)| lt(&l, &r)),
                     ComparationExprListGroup::LTEqu(_) => {
-                        operands.and_then(|(l, r)| unimplemented!())
+                        operands.and_then(|(l, r)| not(&gt(&l, &r)?))
                     }
                     ComparationExprListGroup::EquEqu(_) => operands.and_then(|(l, r)| l.eq(&r)),
                     ComparationExprListGroup::BangEqu(_) => operands.and_then(|(l, r)| l.ne(&r)),

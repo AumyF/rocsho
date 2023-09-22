@@ -14,7 +14,7 @@ Module
 ModuleItem
     : FunctionDeclaration;
 ComparationExpr
-    : ComparationOperand { ( '>' | '<' | '<=' | '>=' | '==' | '!=' ) ComparationOperand };
+    : ComparationOperand { ( '<=' | '>=' | '<' | '>' | '==' | '!=' ) ComparationOperand };
 FunctionDeclaration
     : 'def'^ Identifier '('^ ParameterList ')'^ '='^ Expr ';'^;
 ParameterList
