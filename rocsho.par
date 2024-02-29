@@ -32,8 +32,6 @@ VariableDeclaration
     : 'let'^ Pattern '='^ Expr;
 DecimalIntLiteral
     : /0|[1-9][0-9]*/;
-FunctionApplication
-    : PrimaryExpression { '('^ [ Expr { ','^ Expr } ] ')'^ };
 Expr: If
     | ComparationExpr;
 ComparationOperand
@@ -46,6 +44,8 @@ MulDivExpr
     : MulDivOperand { ( '*' | '/' ) MulDivOperand };
 MulDivOperand
     : FunctionApplication;
+FunctionApplication
+    : PrimaryExpression [PrimaryExpression { PrimaryExpression }];
 If  : 'if'^ Expr 'then'^ Expr 'else'^ Expr;
 BoolLiteral
     : 'true'

@@ -13,5 +13,4 @@ def fact2(n) =
 ---
 
 fact(4);
-fact2(4);
-0 <= 0
+fact2 4

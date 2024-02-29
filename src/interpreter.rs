@@ -531,29 +531,24 @@ impl<'a> Block<'a> {
 impl<'a> FunctionApplication<'a> {
     fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         let f = self.primary_expression.evaluate(env);
-        let appls = self.function_application_list.iter();
-        let res = appls.fold(f, |f, args| {
-            let args = args
-                .function_application_opt
-                .clone()
-                .map_or(Ok(Vec::new()), |args| {
-                    let a = std::iter::once(args.expr.evaluate(env)).chain(
-                        args.function_application_opt_list
-                            .iter()
-                            .map(|arg| arg.expr.evaluate(env)),
-                    );
-                    a.collect()
-                });
+        let l = self
+            .function_application_opt
+            .clone()
+            .into_iter()
+            .flat_map(|list| {
+                std::iter::once(list.primary_expression).chain(
+                    list.function_application_opt_list
+                        .into_iter()
+                        .map(|o| o.primary_expression),
+                )
+            })
+            .fold(f, |f, arg| {
+                let arg = arg.evaluate(env)?;
+                let f = f?;
+                f.try_call(f.clone(), vec![arg])
+            });
 
-            let self_value = f?;
-            let f = self_value
-                .methods
-                .get("call")
-                .ok_or("Cannot call an object which doesn't 'call' method".to_string())?;
-            f.evaluate_with(self_value.clone(), args?)
-        });
-
-        res
+        l
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::rocsho_grammar_trait::{Rocsho, RocshoGrammarTrait,};
+use crate::rocsho_grammar_trait::{Rocsho, RocshoGrammarTrait};
 #[allow(unused_imports)]
 use parol_runtime::Result;
 use std::fmt::{Debug, Display, Error, Formatter};
