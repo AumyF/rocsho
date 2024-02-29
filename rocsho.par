@@ -45,7 +45,7 @@ MulDivExpr
 MulDivOperand
     : FunctionApplication;
 FunctionApplication
-    : PrimaryExpression [PrimaryExpression { PrimaryExpression }];
+    : PrimaryExpression ['.'^ Identifier] [ PrimaryExpression { PrimaryExpression } ];
 If  : 'if'^ Expr 'then'^ Expr 'else'^ Expr;
 BoolLiteral
     : 'true'

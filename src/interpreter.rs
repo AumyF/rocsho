@@ -531,13 +531,17 @@ impl<'a> Block<'a> {
 impl<'a> FunctionApplication<'a> {
     fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         let f = self.primary_expression.evaluate(env);
-        let l = self
+        let method_name = self
             .function_application_opt
+            .as_ref()
+            .map_or("call", |a| a.identifier.identifier.text());
+        let l = self
+            .function_application_opt0
             .clone()
             .into_iter()
             .flat_map(|list| {
                 std::iter::once(list.primary_expression).chain(
-                    list.function_application_opt_list
+                    list.function_application_opt0_list
                         .into_iter()
                         .map(|o| o.primary_expression),
                 )
@@ -545,7 +549,7 @@ impl<'a> FunctionApplication<'a> {
             .fold(f, |f, arg| {
                 let arg = arg.evaluate(env)?;
                 let f = f?;
-                f.try_call(f.clone(), vec![arg])
+                f.try_call_method(f.clone(), method_name, vec![arg])
             });
 
         l
