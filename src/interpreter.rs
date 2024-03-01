@@ -401,8 +401,52 @@ impl<'a> Expr<'a> {
     fn evaluate(&self, env: &Properties<'a>) -> EvalResult<'a> {
         match self {
             Expr::If(e) => e.r#if.evaluate(env),
-            Expr::ComparationExpr(e) => e.comparation_expr.evaluate(env),
+            Expr::PipeExpr(e) => e.pipe_expr.evaluate(env),
         }
+    }
+}
+
+impl<'source> PipeOperand<'source> {
+    fn evaluate(&self, env: &Properties<'source>) -> EvalResult<'source> {
+        self.comparation_expr.evaluate(env)
+    }
+}
+
+impl<'source> PipeExpr<'source> {
+    fn evaluate(&self, env: &Properties<'source>) -> EvalResult<'source> {
+        self.pipe_expr_list
+            .iter()
+            .fold(self.pipe_operand.evaluate(env), |acc, a| {
+                match *a.pipe_expr_list_group.clone() {
+                    PipeExprListGroup::OrDotIdentifierPrimaryExpressionPipeExprListGroupList(a) => {
+                        acc.and_then(|acc| {
+                            let args: Result<Vec<_>, String> =
+                                std::iter::once(a.primary_expression.evaluate(env))
+                                    .chain(
+                                        a.pipe_expr_list_group_list
+                                            .iter()
+                                            .map(|v| v.primary_expression.evaluate(env)),
+                                    )
+                                    .collect();
+
+                            acc.try_call_method(acc.clone(), a.identifier.identifier.text(), args?)
+                        })
+                    }
+                    PipeExprListGroup::PipeExprListGroupGroupPipeOperand(a) => {
+                        let operands = acc.bind_tuple(|| a.pipe_operand.evaluate(env));
+                        match *a.pipe_expr_list_group_group {
+                            // |>
+                            PipeExprListGroupGroup::OrGT(_) => {
+                                operands.and_then(|(l, r)| r.try_call(r.clone(), vec![l]))
+                            }
+                            // <|
+                            PipeExprListGroupGroup::LTOr(_) => {
+                                operands.and_then(|(l, r)| l.try_call(l.clone(), vec![r]))
+                            }
+                        }
+                    }
+                }
+            })
     }
 }
 
