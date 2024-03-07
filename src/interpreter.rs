@@ -65,7 +65,7 @@ impl<'a> Func<'a> {
 
 type Args<'a> = Vec<Value<'a>>;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Method<'a> {
     UserDefined(Func<'a>),
     Builtin {
@@ -78,6 +78,15 @@ impl<'a> Method<'a> {
         match self {
             Method::Builtin { f } => f(self_value, args),
             Method::UserDefined(f) => f.evaluate_with(self_value, args),
+        }
+    }
+}
+
+impl<'source> std::fmt::Debug for Method<'source> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UserDefined(fnc) => write!(f, "{:#?}", fnc),
+            Self::Builtin { f:fnc } => write!(f, "<builtin function>"),
         }
     }
 }
