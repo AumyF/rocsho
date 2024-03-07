@@ -3,3 +3,4 @@
 rocsho-exp.par
 src/rocsho_parser.rs
 src/rocsho_grammar_trait.rs
+src/snapshots

@@ -100,7 +100,7 @@ impl<'a> Methods<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum WrappedValue {
+pub enum WrappedValue {
     Int(i64),
     Bool(bool),
     Unit,
@@ -110,7 +110,7 @@ enum WrappedValue {
 pub struct Value<'a> {
     properties: Properties<'a>,
     methods: Methods<'a>,
-    wrappd_value: Option<WrappedValue>,
+    pub wrappd_value: Option<WrappedValue>,
 }
 
 impl<'a> Value<'a> {
